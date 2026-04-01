@@ -31,9 +31,8 @@ Resources:
             Action: "sts:AssumeRoleWithWebIdentity"
             Condition:
               StringEquals:
-                - !Sub "${OIDCProviderURL}:aud": "sts.amazonaws.com"
-                - !Sub "${OIDCProviderURL}:sub": "system:serviceaccount:karpenter:karpenter"
-
+                !Sub "${OIDCProviderURL}:aud": "sts.amazonaws.com"
+                !Sub "${OIDCProviderURL}:sub": "system:serviceaccount:karpenter:karpenter"
       Policies:
         - PolicyName: KarpenterControllerPolicy
           PolicyDocument:
