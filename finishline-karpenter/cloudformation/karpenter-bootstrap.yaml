@@ -5,19 +5,15 @@ Description: "Bootstrap AWS resources required for Karpenter on EKS"
 Parameters:
   ClusterName:
     Type: String
-    Description: Name of the EKS cluster
+    Description: "Name of the EKS cluster"
     AllowedPattern: "^[a-zA-Z0-9-]{1,256}$"
 
   OIDCProviderURL:
     Type: String
-    Description: EKS OIDC provider URL without https:// (e.g., oidc.eks.region.amazonaws.com/id/EXAMPLEID)
+    Description: "EKS OIDC provider URL without https://"
     AllowedPattern: "^[a-zA-Z0-9./:=-]+$"
 
 Resources:
-
-  ########################################################
-  # Karpenter Controller IAM Role
-  ########################################################
   KarpenterControllerRole:
     Type: AWS::IAM::Role
     Properties:
@@ -49,7 +45,6 @@ Resources:
                   - ec2:CreateTags
                   - ec2:DeleteTags
                 Resource: "*"
-
               - Sid: EC2Discovery
                 Effect: Allow
                 Action:
@@ -64,50 +59,33 @@ Resources:
                   - ec2:DescribeInstanceTypeOfferings
                   - ec2:DescribeTags
                 Resource: "*"
-
               - Sid: Pricing
                 Effect: Allow
                 Action:
                   - pricing:GetProducts
                 Resource: "*"
-
               - Sid: SSM
                 Effect: Allow
                 Action:
                   - ssm:GetParameter
                   - ssm:GetParameters
                 Resource: !Sub "arn:aws:ssm:${AWS::Region}::parameter/aws/service/eks/optimized-ami/*"
-
               - Sid: PassNodeRole
                 Effect: Allow
                 Action:
                   - iam:PassRole
                 Resource: !GetAtt KarpenterNodeRole.Arn
-
               - Sid: EKSDescribe
                 Effect: Allow
                 Action:
                   - eks:DescribeCluster
                 Resource: !Sub "arn:aws:eks:${AWS::Region}:${AWS::AccountId}:cluster/${ClusterName}"
-
-              - Sid: InterruptionQueue
-                Effect: Allow
-                Action:
-                  - sqs:GetQueueAttributes
-                  - sqs:GetQueueUrl
-                  - sqs:ReceiveMessage
-                  - sqs:DeleteMessage
-                Resource: !Sub "arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:${ClusterName}-karpenter-interruption-queue"
-
       Tags:
         - Key: ManagedBy
           Value: Karpenter
         - Key: ClusterName
           Value: !Ref ClusterName
 
-  ########################################################
-  # Karpenter Node IAM Role
-  ########################################################
   KarpenterNodeRole:
     Type: AWS::IAM::Role
     Properties:
@@ -119,22 +97,17 @@ Resources:
             Principal:
               Service: ec2.amazonaws.com
             Action: "sts:AssumeRole"
-
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
         - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
         - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
         - arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
-
       Tags:
         - Key: ManagedBy
           Value: Karpenter
         - Key: ClusterName
           Value: !Ref ClusterName
 
-  ########################################################
-  # Instance Profile for Nodes
-  ########################################################
   KarpenterNodeInstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
@@ -144,38 +117,7 @@ Resources:
 
 Outputs:
   KarpenterControllerRoleArn:
-    Description: ARN of the Karpenter controller IAM role
     Value: !GetAtt KarpenterControllerRole.Arn
-    Export:
-      Name: !Sub "${ClusterName}-KarpenterControllerRoleArn"
-
-  KarpenterControllerRoleName:
-    Description: Name of the Karpenter controller IAM role
-    Value: !Ref KarpenterControllerRole
-    Export:
-      Name: !Sub "${ClusterName}-KarpenterControllerRoleName"
-
   KarpenterNodeRoleArn:
-    Description: ARN of the Karpenter node IAM role
     Value: !GetAtt KarpenterNodeRole.Arn
-    Export:
-      Name: !Sub "${ClusterName}-KarpenterNodeRoleArn"
-
-  KarpenterNodeRoleName:
-    Description: Name of the Karpenter node IAM role
-    Value: !Ref KarpenterNodeRole
-    Export:
-      Name: !Sub "${ClusterName}-KarpenterNodeRoleName"
-
-  KarpenterNodeInstanceProfileArn:
-    Description: ARN of the Karpenter node instance profile
-    Value: !GetAtt KarpenterNodeInstanceProfile.Arn
-    Export:
-      Name: !Sub "${ClusterName}-KarpenterNodeInstanceProfileArn"
-
-  KarpenterNodeInstanceProfileName:
-    Description: Name of the Karpenter node instance profile
-    Value: !Ref KarpenterNodeInstanceProfile
-    Export:
-      Name: !Sub "${ClusterName}-KarpenterNodeInstanceProfileName"
 EOF
