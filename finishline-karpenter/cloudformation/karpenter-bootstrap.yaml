@@ -31,8 +31,7 @@ Resources:
           - Sid: AllowEventBridgeToSendMessages
             Effect: Allow
             Principal:
-              Service:
-                - events.amazonaws.com
+              Service: events.amazonaws.com
             Action: sqs:SendMessage
             Resource: !GetAtt KarpenterInterruptionQueue.Arn
 
@@ -50,7 +49,7 @@ Resources:
           - EC2 Spot Instance Interruption Warning
       Targets:
         - Arn: !GetAtt KarpenterInterruptionQueue.Arn
-          Id: KarpenterInterruptionQueueTarget
+          Id: KarpenterInterruptionQueueTarget1
 
   RebalanceRecommendationRule:
     Type: AWS::Events::Rule
@@ -63,7 +62,7 @@ Resources:
           - EC2 Instance Rebalance Recommendation
       Targets:
         - Arn: !GetAtt KarpenterInterruptionQueue.Arn
-          Id: KarpenterInterruptionQueueTarget
+          Id: KarpenterInterruptionQueueTarget2
 
   InstanceStateChangeRule:
     Type: AWS::Events::Rule
@@ -76,7 +75,7 @@ Resources:
           - EC2 Instance State-change Notification
       Targets:
         - Arn: !GetAtt KarpenterInterruptionQueue.Arn
-          Id: KarpenterInterruptionQueueTarget
+          Id: KarpenterInterruptionQueueTarget3
 
   ScheduledChangeRule:
     Type: AWS::Events::Rule
@@ -89,7 +88,7 @@ Resources:
           - AWS Health Event
       Targets:
         - Arn: !GetAtt KarpenterInterruptionQueue.Arn
-          Id: KarpenterInterruptionQueueTarget
+          Id: KarpenterInterruptionQueueTarget4
 
   ########################################################
   # IAM Role for EC2 instances launched by Karpenter
@@ -123,7 +122,7 @@ Resources:
         - !Ref KarpenterNodeRole
 
   ########################################################
-  # Karpenter Controller IRSA Role
+  # Karpenter Controller IAM Policy
   ########################################################
   KarpenterControllerPolicy:
     Type: AWS::IAM::ManagedPolicy
@@ -186,6 +185,9 @@ Resources:
               - sqs:ReceiveMessage
             Resource: !GetAtt KarpenterInterruptionQueue.Arn
 
+  ########################################################
+  # Karpenter Controller IRSA Role
+  ########################################################
   KarpenterControllerRole:
     Type: AWS::IAM::Role
     Properties:
