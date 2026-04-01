@@ -1,13 +1,17 @@
 #!/bin/bash
 set -euo pipefail
 
-########################################################
-# Configuration
-########################################################
-CLUSTER_NAME="finishline-eks-cluster"
-AWS_REGION="us-east-1"
-STACK_NAME="Karpenter-${CLUSTER_NAME}"
+# Load configuration
+CONFIG_FILE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/config.env"
+if [[ ! -f "${CONFIG_FILE}" ]]; then
+  echo "ERROR: Configuration file not found at ${CONFIG_FILE}"
+  exit 1
+fi
+source "${CONFIG_FILE}"
 
+########################################################
+# Cleanup
+########################################################
 echo "=========================================="
 echo "Removing test workload..."
 echo "=========================================="
@@ -25,8 +29,8 @@ echo "=========================================="
 echo "Removing Karpenter Helm releases..."
 echo "=========================================="
 
-helm uninstall karpenter -n kube-system || true
-helm uninstall karpenter-crd -n kube-system || true
+helm uninstall karpenter -n "${KARPENTER_NAMESPACE}" || true
+helm uninstall karpenter-crd -n "${KARPENTER_NAMESPACE}" || true
 
 echo "=========================================="
 echo "Removing Karpenter ServiceAccount..."
@@ -40,8 +44,16 @@ echo "=========================================="
 
 aws cloudformation delete-stack \
   --region "${AWS_REGION}" \
-  --stack-name "${STACK_NAME}"
+  --stack-name "${STACK_NAME}" || {
+  echo "Warning: Failed to delete CloudFormation stack. Check AWS console."
+}
+
+# Wait for stack deletion
+echo "Waiting for stack deletion (this may take several minutes)..."
+aws cloudformation wait stack-delete-complete \
+  --region "${AWS_REGION}" \
+  --stack-name "${STACK_NAME}" 2>/dev/null || echo "Note: Stack deletion monitoring completed or stack already deleted"
 
 echo "=========================================="
-echo "Cleanup initiated."
+echo "Cleanup completed."
 echo "=========================================="

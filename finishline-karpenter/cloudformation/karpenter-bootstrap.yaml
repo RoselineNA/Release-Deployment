@@ -1,3 +1,4 @@
+cat > cloudformation/karpenter-bootstrap.yaml <<'EOF'
 AWSTemplateFormatVersion: "2010-09-09"
 Description: "Bootstrap AWS resources required for Karpenter on EKS"
 
@@ -5,18 +6,14 @@ Parameters:
   ClusterName:
     Type: String
     Description: Name of the EKS cluster
+    AllowedPattern: "^[a-zA-Z0-9-]{1,256}$"
+
+  OIDCProviderURL:
+    Type: String
+    Description: EKS OIDC provider URL without https:// (e.g., oidc.eks.region.amazonaws.com/id/EXAMPLEID)
+    AllowedPattern: "^[a-zA-Z0-9./:=-]+$"
 
 Resources:
-
-  ########################################################
-  # Get Cluster OIDC Provider URL
-  ########################################################
-  KarpenterOIDCProvider:
-    Type: AWS::SSM::Parameter
-    Properties:
-      Name: !Sub "/${ClusterName}/karpenter/oidc-provider-placeholder"
-      Type: String
-      Value: "Replace after stack creation if needed"
 
   ########################################################
   # Karpenter Controller IAM Role
@@ -34,20 +31,29 @@ Resources:
             Action: "sts:AssumeRoleWithWebIdentity"
             Condition:
               StringEquals:
-                !Sub "${OIDCProviderURL}:aud": "sts.amazonaws.com"
-                !Sub "${OIDCProviderURL}:sub": "system:serviceaccount:kube-system:karpenter"
+                - !Sub "${OIDCProviderURL}:aud": "sts.amazonaws.com"
+                - !Sub "${OIDCProviderURL}:sub": "system:serviceaccount:karpenter:karpenter"
+
       Policies:
         - PolicyName: KarpenterControllerPolicy
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
-              - Sid: EC2
+              - Sid: EC2Management
                 Effect: Allow
                 Action:
                   - ec2:CreateLaunchTemplate
                   - ec2:CreateFleet
                   - ec2:RunInstances
                   - ec2:TerminateInstances
+                  - ec2:DeleteLaunchTemplate
+                  - ec2:CreateTags
+                  - ec2:DeleteTags
+                Resource: "*"
+
+              - Sid: EC2Discovery
+                Effect: Allow
+                Action:
                   - ec2:DescribeLaunchTemplates
                   - ec2:DescribeInstances
                   - ec2:DescribeInstanceTypes
@@ -57,8 +63,7 @@ Resources:
                   - ec2:DescribeImages
                   - ec2:DescribeSpotPriceHistory
                   - ec2:DescribeInstanceTypeOfferings
-                  - ec2:DeleteLaunchTemplate
-                  - ec2:CreateTags
+                  - ec2:DescribeTags
                 Resource: "*"
 
               - Sid: Pricing
@@ -71,19 +76,35 @@ Resources:
                 Effect: Allow
                 Action:
                   - ssm:GetParameter
-                Resource: "*"
+                  - ssm:GetParameters
+                Resource: !Sub "arn:aws:ssm:${AWS::Region}::parameter/aws/service/eks/optimized-ami/*"
 
               - Sid: PassNodeRole
                 Effect: Allow
                 Action:
                   - iam:PassRole
-                Resource: !Sub "arn:aws:iam::${AWS::AccountId}:role/${ClusterName}-karpenter-node-role"
+                Resource: !GetAtt KarpenterNodeRole.Arn
 
               - Sid: EKSDescribe
                 Effect: Allow
                 Action:
                   - eks:DescribeCluster
-                Resource: "*"
+                Resource: !Sub "arn:aws:eks:${AWS::Region}:${AWS::AccountId}:cluster/${ClusterName}"
+
+              - Sid: InterruptionQueue
+                Effect: Allow
+                Action:
+                  - sqs:GetQueueAttributes
+                  - sqs:GetQueueUrl
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                Resource: !Sub "arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:${ClusterName}-karpenter-interruption-queue"
+
+      Tags:
+        - Key: ManagedBy
+          Value: Karpenter
+        - Key: ClusterName
+          Value: !Ref ClusterName
 
   ########################################################
   # Karpenter Node IAM Role
@@ -106,29 +127,56 @@ Resources:
         - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
         - arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
 
+      Tags:
+        - Key: ManagedBy
+          Value: Karpenter
+        - Key: ClusterName
+          Value: !Ref ClusterName
+
   ########################################################
   # Instance Profile for Nodes
   ########################################################
   KarpenterNodeInstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
-      InstanceProfileName: !Sub "${ClusterName}-karpenter-node-instance-profile"
+      InstanceProfileName: !Sub "KarpenterNodeInstanceProfile-${ClusterName}"
       Roles:
         - !Ref KarpenterNodeRole
 
 Outputs:
   KarpenterControllerRoleArn:
+    Description: ARN of the Karpenter controller IAM role
     Value: !GetAtt KarpenterControllerRole.Arn
     Export:
       Name: !Sub "${ClusterName}-KarpenterControllerRoleArn"
 
+  KarpenterControllerRoleName:
+    Description: Name of the Karpenter controller IAM role
+    Value: !Ref KarpenterControllerRole
+    Export:
+      Name: !Sub "${ClusterName}-KarpenterControllerRoleName"
+
   KarpenterNodeRoleArn:
+    Description: ARN of the Karpenter node IAM role
     Value: !GetAtt KarpenterNodeRole.Arn
     Export:
       Name: !Sub "${ClusterName}-KarpenterNodeRoleArn"
 
+  KarpenterNodeRoleName:
+    Description: Name of the Karpenter node IAM role
+    Value: !Ref KarpenterNodeRole
+    Export:
+      Name: !Sub "${ClusterName}-KarpenterNodeRoleName"
+
+  KarpenterNodeInstanceProfileArn:
+    Description: ARN of the Karpenter node instance profile
+    Value: !GetAtt KarpenterNodeInstanceProfile.Arn
+    Export:
+      Name: !Sub "${ClusterName}-KarpenterNodeInstanceProfileArn"
+
   KarpenterNodeInstanceProfileName:
+    Description: Name of the Karpenter node instance profile
     Value: !Ref KarpenterNodeInstanceProfile
     Export:
       Name: !Sub "${ClusterName}-KarpenterNodeInstanceProfileName"
-      
+EOF

@@ -7,11 +7,12 @@ spec:
     metadata:
       labels:
         workload-type: general
+        managed-by: karpenter
     spec:
       nodeClassRef:
-        group: karpenter.k8s.aws
+        apiVersion: karpenter.k8s.aws/v1
         kind: EC2NodeClass
-        name: bottlerocket
+        name: default
 
       requirements:
         - key: kubernetes.io/arch
@@ -34,11 +35,20 @@ spec:
             - m5.large
             - m5a.large
 
+        - key: karpenter.sh/weighted-priority
+          operator: In
+          values: ["100"]
+
   disruption:
-    consolidationPolicy: WhenEmptyOrUnderutilized
+    consolidationPolicy: WhenUnderutilized
     consolidateAfter: 30s
+    expireAfter: 604800s
+    budgets:
+      - nodes: "10%"
+        duration: 5m
 
   limits:
-    cpu: "20"
+    cpu: 20
+    memory: 1000Gi
 
   weight: 10
