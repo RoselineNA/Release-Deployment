@@ -1,0 +1,34 @@
+apiVersion: karpenter.k8s.aws/v1
+kind: EC2NodeClass
+metadata:
+  name: bottlerocket
+spec:
+  amiFamily: Bottlerocket
+
+  instanceProfile: KarpenterNodeInstanceProfile-finishline-eks-cluster
+
+  subnetSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: finishline-eks-cluster
+
+  securityGroupSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: finishline-eks-cluster
+
+  tags:
+    Name: finishline-karpenter-node
+    karpenter.sh/discovery: finishline-eks-cluster
+
+  blockDeviceMappings:
+    - deviceName: /dev/xvda
+      ebs:
+        volumeSize: 20Gi
+        volumeType: gp3
+        encrypted: true
+        deleteOnTermination: true
+
+  metadataOptions:
+    httpEndpoint: enabled
+    httpProtocolIPv6: disabled
+    httpPutResponseHopLimit: 2
+    httpTokens: required

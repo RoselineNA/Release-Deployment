@@ -1,0 +1,27 @@
+# macOS / Linux
+.DS_Store
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# Kubernetes
+kubeconfig
+*.kubeconfig
+
+# Logs
+*.log
+
+# IDE / Editors
+.vscode/
+.idea/
+
+# Temp files
+*.swp
+*.bak
+
+# Environment files
+.env
+.env.*
