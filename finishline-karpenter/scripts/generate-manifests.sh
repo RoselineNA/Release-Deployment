@@ -104,10 +104,7 @@ spec:
         - key: node.kubernetes.io/instance-type
           operator: In
           values:
-            - t3.large
-            - t3a.large
-            - m5.large
-            - m5a.large
+${INSTANCE_TYPES_YAML}
 
         - key: karpenter.sh/weighted-priority
           operator: In

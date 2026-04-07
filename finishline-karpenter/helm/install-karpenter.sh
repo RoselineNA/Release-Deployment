@@ -137,6 +137,7 @@ helm upgrade --install karpenter oci://public.ecr.aws/karpenter/karpenter \
   --set settings.clusterName="${CLUSTER_NAME}" \
   --set settings.clusterEndpoint="${CLUSTER_ENDPOINT}" \
   --set settings.interruptionQueue="${INTERRUPTION_QUEUE_NAME}" \
+  --set settings.isolatedVPC=true \
   --wait --timeout 5m || {
   echo "ERROR: Failed to install Karpenter controller"
   exit 1
@@ -144,24 +145,6 @@ helm upgrade --install karpenter oci://public.ecr.aws/karpenter/karpenter \
 
 ########################################################
 # Verification
-########################################################
-echo "=========================================="
-echo "Verifying installation..."
-echo "=========================================="
-
-kubectl rollout status deployment/karpenter -n "${KARPENTER_NAMESPACE}" --timeout=5m || {
-  echo "ERROR: Karpenter deployment failed to become ready"
-  exit 1
-}
-
-echo "=========================================="
-echo "Karpenter installation completed successfully."
-echo "=========================================="
-  --set settings.isolatedVPC=true \
-  --wait
-
-########################################################
-# Verify controller deployment
 ########################################################
 echo "=========================================="
 echo "Verifying Karpenter deployment..."
