@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "Bootstrap AWS resources required for Karpenter on EKS"
+Description: "Bootstrap AWS resources required for Karpenter on EKS - Fixed for EarlyValidation"
 
 Parameters:
   ClusterName:
@@ -9,8 +9,7 @@ Parameters:
 
   OIDCProviderURL:
     Type: String
-    Description: "EKS OIDC provider URL without https://"
-    AllowedPattern: "^[a-zA-Z0-9./:=-]+$"
+    Description: "EKS OIDC provider URL (e.g., oidc.eks.us-east-1.amazonaws.com/id/...) without https://"
 
 Resources:
   KarpenterControllerRole:
@@ -24,6 +23,13 @@ Resources:
             Principal:
               Federated: !Sub "arn:aws:iam::${AWS::AccountId}:oidc-provider/${OIDCProviderURL}"
             Action: "sts:AssumeRoleWithWebIdentity"
+            Condition:
+              StringEquals:
+                # Using the Map form of !Sub ensures the key is evaluated correctly by CFN Hooks
+                !Sub 
+                  - "${URL}:aud": "sts.amazonaws.com"
+                    "${URL}:sub": "system:serviceaccount:karpenter:karpenter"
+                  - URL: !Ref OIDCProviderURL
 
       Policies:
         - PolicyName: KarpenterControllerPolicy
@@ -41,7 +47,6 @@ Resources:
                   - ec2:CreateTags
                   - ec2:DeleteTags
                 Resource: "*"
-
               - Sid: EC2Discovery
                 Effect: Allow
                 Action:
@@ -56,37 +61,27 @@ Resources:
                   - ec2:DescribeInstanceTypeOfferings
                   - ec2:DescribeTags
                 Resource: "*"
-
               - Sid: Pricing
                 Effect: Allow
                 Action:
                   - pricing:GetProducts
                 Resource: "*"
-
               - Sid: SSM
                 Effect: Allow
                 Action:
                   - ssm:GetParameter
                   - ssm:GetParameters
                 Resource: !Sub "arn:aws:ssm:${AWS::Region}::parameter/aws/service/eks/optimized-ami/*"
-
               - Sid: PassNodeRole
                 Effect: Allow
                 Action:
                   - iam:PassRole
                 Resource: !Sub "arn:aws:iam::${AWS::AccountId}:role/${ClusterName}-karpenter-node-role"
-
               - Sid: EKSDescribe
                 Effect: Allow
                 Action:
                   - eks:DescribeCluster
                 Resource: !Sub "arn:aws:eks:${AWS::Region}:${AWS::AccountId}:cluster/${ClusterName}"
-
-      Tags:
-        - Key: ManagedBy
-          Value: Karpenter
-        - Key: ClusterName
-          Value: !Ref ClusterName
 
   KarpenterNodeRole:
     Type: AWS::IAM::Role
@@ -104,11 +99,6 @@ Resources:
         - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
         - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
         - arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
-      Tags:
-        - Key: ManagedBy
-          Value: Karpenter
-        - Key: ClusterName
-          Value: !Ref ClusterName
 
   KarpenterNodeInstanceProfile:
     Type: AWS::IAM::InstanceProfile
@@ -120,6 +110,5 @@ Resources:
 Outputs:
   KarpenterControllerRoleArn:
     Value: !GetAtt KarpenterControllerRole.Arn
-
   KarpenterNodeRoleArn:
     Value: !GetAtt KarpenterNodeRole.Arn
