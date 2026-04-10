@@ -78,7 +78,7 @@ Resources:
                 Effect: Allow
                 Action:
                   - iam:PassRole
-                Resource: !GetAtt KarpenterNodeRole.Arn
+                Resource: !Sub "arn:aws:iam::${AWS::AccountId}:role/${ClusterName}-karpenter-node-role"
 
               - Sid: EKSDescribe
                 Effect: Allow
