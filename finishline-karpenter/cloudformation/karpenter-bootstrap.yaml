@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "Bootstrap AWS resources required for Karpenter on EKS - Fixed for EarlyValidation"
+Description: "Bootstrap AWS resources required for Karpenter on EKS - Final Validated Version"
 
 Parameters:
   ClusterName:
@@ -25,8 +25,7 @@ Resources:
             Action: "sts:AssumeRoleWithWebIdentity"
             Condition:
               StringEquals:
-                # Using the Map form of !Sub ensures the key is evaluated correctly by CFN Hooks
-                !Sub 
+                Fn::Sub:
                   - "${URL}:aud": "sts.amazonaws.com"
                     "${URL}:sub": "system:serviceaccount:karpenter:karpenter"
                   - URL: !Ref OIDCProviderURL
@@ -112,3 +111,5 @@ Outputs:
     Value: !GetAtt KarpenterControllerRole.Arn
   KarpenterNodeRoleArn:
     Value: !GetAtt KarpenterNodeRole.Arn
+  KarpenterNodeInstanceProfileName:
+    Value: !Ref KarpenterNodeInstanceProfile
