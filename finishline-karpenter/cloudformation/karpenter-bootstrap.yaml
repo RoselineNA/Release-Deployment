@@ -1,4 +1,3 @@
-cat > cloudformation/karpenter-bootstrap.yaml <<'EOF'
 AWSTemplateFormatVersion: "2010-09-09"
 Description: "Bootstrap AWS resources required for Karpenter on EKS"
 
@@ -27,8 +26,9 @@ Resources:
             Action: "sts:AssumeRoleWithWebIdentity"
             Condition:
               StringEquals:
-                !Sub "${OIDCProviderURL}:aud": "sts.amazonaws.com"
-                !Sub "${OIDCProviderURL}:sub": "system:serviceaccount:karpenter:karpenter"
+                "${OIDCProviderURL}:aud": "sts.amazonaws.com"
+                "${OIDCProviderURL}:sub": "system:serviceaccount:karpenter:karpenter"
+
       Policies:
         - PolicyName: KarpenterControllerPolicy
           PolicyDocument:
@@ -45,6 +45,7 @@ Resources:
                   - ec2:CreateTags
                   - ec2:DeleteTags
                 Resource: "*"
+
               - Sid: EC2Discovery
                 Effect: Allow
                 Action:
@@ -59,27 +60,32 @@ Resources:
                   - ec2:DescribeInstanceTypeOfferings
                   - ec2:DescribeTags
                 Resource: "*"
+
               - Sid: Pricing
                 Effect: Allow
                 Action:
                   - pricing:GetProducts
                 Resource: "*"
+
               - Sid: SSM
                 Effect: Allow
                 Action:
                   - ssm:GetParameter
                   - ssm:GetParameters
                 Resource: !Sub "arn:aws:ssm:${AWS::Region}::parameter/aws/service/eks/optimized-ami/*"
+
               - Sid: PassNodeRole
                 Effect: Allow
                 Action:
                   - iam:PassRole
                 Resource: !GetAtt KarpenterNodeRole.Arn
+
               - Sid: EKSDescribe
                 Effect: Allow
                 Action:
                   - eks:DescribeCluster
                 Resource: !Sub "arn:aws:eks:${AWS::Region}:${AWS::AccountId}:cluster/${ClusterName}"
+
       Tags:
         - Key: ManagedBy
           Value: Karpenter
@@ -118,6 +124,6 @@ Resources:
 Outputs:
   KarpenterControllerRoleArn:
     Value: !GetAtt KarpenterControllerRole.Arn
+
   KarpenterNodeRoleArn:
     Value: !GetAtt KarpenterNodeRole.Arn
-EOF
