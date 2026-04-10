@@ -24,10 +24,6 @@ Resources:
             Principal:
               Federated: !Sub "arn:aws:iam::${AWS::AccountId}:oidc-provider/${OIDCProviderURL}"
             Action: "sts:AssumeRoleWithWebIdentity"
-            Condition:
-              StringEquals:
-                "${OIDCProviderURL}:aud": "sts.amazonaws.com"
-                "${OIDCProviderURL}:sub": "system:serviceaccount:karpenter:karpenter"
 
       Policies:
         - PolicyName: KarpenterControllerPolicy
