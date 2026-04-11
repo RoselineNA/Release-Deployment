@@ -13,7 +13,6 @@ Resources:
   KarpenterControllerRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub "${ClusterName}-karpenter-controller-role"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -73,7 +72,7 @@ Resources:
                 Effect: Allow
                 Action:
                   - iam:PassRole
-                Resource: !Sub "arn:aws:iam::${AWS::AccountId}:role/${ClusterName}-karpenter-node-role"
+                Resource: !GetAtt KarpenterNodeRole.Arn
               - Sid: EKSDescribe
                 Effect: Allow
                 Action:
@@ -83,7 +82,6 @@ Resources:
   KarpenterNodeRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub "${ClusterName}-karpenter-node-role"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -100,7 +98,6 @@ Resources:
   KarpenterNodeInstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
-      InstanceProfileName: !Sub "KarpenterNodeInstanceProfile-${ClusterName}"
       Roles:
         - !Ref KarpenterNodeRole
 
