@@ -1,15 +1,11 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "Bootstrap AWS resources required for Karpenter on EKS - Final Production Version"
+Description: "Bootstrap AWS resources required for Karpenter on EKS - Final Corrected Syntax"
 
 Parameters:
   ClusterName:
     Type: String
-    Description: "Name of the EKS cluster"
-    AllowedPattern: "^[a-zA-Z0-9-]{1,256}$"
-
   OIDCProviderURL:
     Type: String
-    Description: "EKS OIDC provider URL without https://"
 
 Resources:
   KarpenterControllerRole:
@@ -25,11 +21,13 @@ Resources:
             Action: "sts:AssumeRoleWithWebIdentity"
             Condition:
               StringEquals:
-                # FIXED: Use !Sub directly on the key and value as strings.
-                # This avoids the "unhashable type: dict" error because the key is a string template,
-                # and it avoids the "expected arguments" error by avoiding the list syntax.
-                !Sub "${OIDCProviderURL}:aud": "sts.amazonaws.com"
-                !Sub "${OIDCProviderURL}:sub": "system:serviceaccount:karpenter:karpenter"
+                # Use the full Fn::Sub list syntax. 
+                # The first element MUST be a single string containing the template.
+                # This prevents the 'unhashable dict' error by moving the !Sub out of the key position.
+                Fn::Sub:
+                  - "${URL}:aud": "sts.amazonaws.com"
+                    "${URL}:sub": "system:serviceaccount:karpenter:karpenter"
+                  - URL: !Ref OIDCProviderURL
 
       Policies:
         - PolicyName: KarpenterControllerPolicy
