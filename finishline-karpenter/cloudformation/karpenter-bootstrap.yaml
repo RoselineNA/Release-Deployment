@@ -25,6 +25,7 @@ Resources:
             Action: "sts:AssumeRoleWithWebIdentity"
             Condition:
               StringEquals:
+                # Use Fn::Sub with a clear list structure to satisfy the validator
                 Fn::Sub:
                   - "${URL}:aud": "sts.amazonaws.com"
                     "${URL}:sub": "system:serviceaccount:karpenter:karpenter"
