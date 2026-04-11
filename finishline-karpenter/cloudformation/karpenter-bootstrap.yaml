@@ -23,14 +23,10 @@ Resources:
             Action: "sts:AssumeRoleWithWebIdentity"
             Condition:
               StringEquals:
-                # The holistic fix: 
-                # 1. We use the full Fn::Sub key to avoid YAML shorthand issues.
-                # 2. The first element of the list is a single string containing the MAP.
-                # 3. This avoids 'unhashable dict' because the key is inside a string.
-                Fn::Sub:
-                  - "${URL}:aud": "sts.amazonaws.com"
-                    "${URL}:sub": "system:serviceaccount:karpenter:karpenter"
-                  - URL: !Ref OIDCProviderURL
+                - !Sub "${OIDCProviderURL}:aud"
+                - "sts.amazonaws.com"
+                - !Sub "${OIDCProviderURL}:sub"
+                - "system:serviceaccount:karpenter:karpenter"
 
       Policies:
         - PolicyName: KarpenterControllerPolicy
