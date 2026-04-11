@@ -1,13 +1,11 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "Bootstrap AWS resources required for Karpenter on EKS - Holistic Fix"
+Description: "Bootstrap AWS resources for Karpenter - Holistic Final Version"
 
 Parameters:
   ClusterName:
     Type: String
-    Description: "Name of the EKS cluster"
   OIDCProviderURL:
     Type: String
-    Description: "EKS OIDC provider URL without https://"
 
 Resources:
   KarpenterControllerRole:
@@ -15,8 +13,8 @@ Resources:
     Properties:
       RoleName: !Sub "${ClusterName}-karpenter-controller-role"
       AssumeRolePolicyDocument:
-        # The "|" (Literal Block Scalar) ensures the entire policy is treated as a single string.
-        # This bypasses all "unhashable type: dict" and "expected arguments" errors.
+        # The "|" tells YAML to treat this block as a raw string. 
+        # This prevents the parser from crashing on the dynamic keys.
         Fn::Sub:
           - |
             {
