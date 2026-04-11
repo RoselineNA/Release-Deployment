@@ -13,19 +13,31 @@ Resources:
   KarpenterControllerRole:
     Type: AWS::IAM::Role
     Properties:
+      RoleName: !Sub "${ClusterName}-karpenter-controller-role"
       AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Federated: !Sub "arn:aws:iam::${AWS::AccountId}:oidc-provider/${OIDCProviderURL}"
-            Action: "sts:AssumeRoleWithWebIdentity"
-            Condition:
-              StringEquals:
-                - !Sub "${OIDCProviderURL}:aud"
-                - "sts.amazonaws.com"
-                - !Sub "${OIDCProviderURL}:sub"
-                - "system:serviceaccount:karpenter:karpenter"
+        # The "|" (Literal Block Scalar) ensures the entire policy is treated as a single string.
+        # This bypasses all "unhashable type: dict" and "expected arguments" errors.
+        Fn::Sub:
+          - |
+            {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Principal": {
+                    "Federated": "arn:aws:iam::${AWS::AccountId}:oidc-provider/${URL}"
+                  },
+                  "Action": "sts:AssumeRoleWithWebIdentity",
+                  "Condition": {
+                    "StringEquals": {
+                      "${URL}:aud": "sts.amazonaws.com",
+                      "${URL}:sub": "system:serviceaccount:karpenter:karpenter"
+                    }
+                  }
+                }
+              ]
+            }
+          - URL: !Ref OIDCProviderURL
 
       Policies:
         - PolicyName: KarpenterControllerPolicy
@@ -82,6 +94,7 @@ Resources:
   KarpenterNodeRole:
     Type: AWS::IAM::Role
     Properties:
+      RoleName: !Sub "${ClusterName}-karpenter-node-role"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -98,6 +111,7 @@ Resources:
   KarpenterNodeInstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
+      InstanceProfileName: !Sub "KarpenterNodeInstanceProfile-${ClusterName}"
       Roles:
         - !Ref KarpenterNodeRole
 
