@@ -1,11 +1,13 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "Bootstrap AWS resources required for Karpenter on EKS - Final Corrected Syntax"
+Description: "Bootstrap AWS resources required for Karpenter on EKS - Holistic Fix"
 
 Parameters:
   ClusterName:
     Type: String
+    Description: "Name of the EKS cluster"
   OIDCProviderURL:
     Type: String
+    Description: "EKS OIDC provider URL without https://"
 
 Resources:
   KarpenterControllerRole:
@@ -21,9 +23,10 @@ Resources:
             Action: "sts:AssumeRoleWithWebIdentity"
             Condition:
               StringEquals:
-                # Use the full Fn::Sub list syntax. 
-                # The first element MUST be a single string containing the template.
-                # This prevents the 'unhashable dict' error by moving the !Sub out of the key position.
+                # The holistic fix: 
+                # 1. We use the full Fn::Sub key to avoid YAML shorthand issues.
+                # 2. The first element of the list is a single string containing the MAP.
+                # 3. This avoids 'unhashable dict' because the key is inside a string.
                 Fn::Sub:
                   - "${URL}:aud": "sts.amazonaws.com"
                     "${URL}:sub": "system:serviceaccount:karpenter:karpenter"
@@ -110,5 +113,3 @@ Outputs:
     Value: !GetAtt KarpenterControllerRole.Arn
   KarpenterNodeRoleArn:
     Value: !GetAtt KarpenterNodeRole.Arn
-  KarpenterNodeInstanceProfileName:
-    Value: !Ref KarpenterNodeInstanceProfile
