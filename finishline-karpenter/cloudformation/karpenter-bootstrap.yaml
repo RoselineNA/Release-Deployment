@@ -13,8 +13,9 @@ Resources:
     Properties:
       RoleName: !Sub "${ClusterName}-karpenter-controller-role"
       AssumeRolePolicyDocument:
-        # The "|" tells YAML to treat this block as a raw string. 
-        # This prevents the parser from crashing on the dynamic keys.
+        # The "|" (Literal Block Scalar) treats the policy as a raw string.
+        # This satisfies the YAML parser (no unhashable dicts) and the
+        # EarlyValidation hook (resolvable mapping).
         Fn::Sub:
           - |
             {
@@ -53,41 +54,16 @@ Resources:
                   - ec2:CreateTags
                   - ec2:DeleteTags
                 Resource: "*"
-              - Sid: EC2Discovery
-                Effect: Allow
-                Action:
-                  - ec2:DescribeLaunchTemplates
-                  - ec2:DescribeInstances
-                  - ec2:DescribeInstanceTypes
-                  - ec2:DescribeSubnets
-                  - ec2:DescribeSecurityGroups
-                  - ec2:DescribeAvailabilityZones
-                  - ec2:DescribeImages
-                  - ec2:DescribeSpotPriceHistory
-                  - ec2:DescribeInstanceTypeOfferings
-                  - ec2:DescribeTags
-                Resource: "*"
               - Sid: Pricing
                 Effect: Allow
                 Action:
                   - pricing:GetProducts
                 Resource: "*"
-              - Sid: SSM
-                Effect: Allow
-                Action:
-                  - ssm:GetParameter
-                  - ssm:GetParameters
-                Resource: !Sub "arn:aws:ssm:${AWS::Region}::parameter/aws/service/eks/optimized-ami/*"
               - Sid: PassNodeRole
                 Effect: Allow
                 Action:
                   - iam:PassRole
-                Resource: !GetAtt KarpenterNodeRole.Arn
-              - Sid: EKSDescribe
-                Effect: Allow
-                Action:
-                  - eks:DescribeCluster
-                Resource: !Sub "arn:aws:eks:${AWS::Region}:${AWS::AccountId}:cluster/${ClusterName}"
+                Resource: !Sub "arn:aws:iam::${AWS::AccountId}:role/${ClusterName}-karpenter-node-role"
 
   KarpenterNodeRole:
     Type: AWS::IAM::Role
@@ -112,9 +88,3 @@ Resources:
       InstanceProfileName: !Sub "KarpenterNodeInstanceProfile-${ClusterName}"
       Roles:
         - !Ref KarpenterNodeRole
-
-Outputs:
-  KarpenterControllerRoleArn:
-    Value: !GetAtt KarpenterControllerRole.Arn
-  KarpenterNodeRoleArn:
-    Value: !GetAtt KarpenterNodeRole.Arn
