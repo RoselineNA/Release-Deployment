@@ -93,7 +93,7 @@ echo "=========================================="
 helm upgrade --install karpenter-crd oci://public.ecr.aws/karpenter/karpenter-crd \
   --version "${KARPENTER_VERSION}" \
   --namespace "${KARPENTER_NAMESPACE}" \
-  --wait --timeout 5m || {
+  --wait --timeout 10m || {
   echo "ERROR: Failed to install Karpenter CRDs"
   exit 1
 }
@@ -138,7 +138,7 @@ helm upgrade --install karpenter oci://public.ecr.aws/karpenter/karpenter \
   --set settings.clusterEndpoint="${CLUSTER_ENDPOINT}" \
   --set settings.interruptionQueue="${INTERRUPTION_QUEUE_NAME}" \
   --set settings.isolatedVPC=true \
-  --wait --timeout 5m || {
+  --wait --timeout 15m || {
   echo "ERROR: Failed to install Karpenter controller"
   exit 1
 }
