@@ -91,10 +91,10 @@ Resources:
       Description: Karpenter Controller IAM Role
       Value: !Ref KarpenterControllerRole
       Export:
-      Name: !Sub "${ClusterName}-KarpenterControllerRole"
+        Name: !Sub "${ClusterName}-KarpenterControllerRole"
 
     KarpenterNodeRole:
       Description: Karpenter Node IAM Role
       Value: !Ref KarpenterNodeRole
       Export:
-      Name: !Sub "${ClusterName}-KarpenterNodeRole"
+        Name: !Sub "${ClusterName}-KarpenterNodeRole"
