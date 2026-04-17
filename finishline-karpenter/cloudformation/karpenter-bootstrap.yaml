@@ -1,20 +1,24 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "Bootstrap AWS resources for Karpenter - Holistic Final Version"
+Description: "Karpenter Bootstrap IAM Roles (Production Ready)"
 
 Parameters:
   ClusterName:
     Type: String
+
   OIDCProviderURL:
     Type: String
+    Description: "OIDC provider WITHOUT https:// (example: oidc.eks.us-east-1.amazonaws.com/id/XXXX)"
 
 Resources:
+
+  # ------------------------------------------------------------
+  # Karpenter Controller Role (IRSA)
+  # ------------------------------------------------------------
   KarpenterControllerRole:
     Type: AWS::IAM::Role
     Properties:
+      RoleName: !Sub "${ClusterName}-karpenter-controller-role"
       AssumeRolePolicyDocument:
-        # The "|" (Literal Block Scalar) treats the policy as a raw string.
-        # This satisfies the YAML parser (no unhashable dicts) and the
-        # EarlyValidation hook (resolvable mapping).
         Fn::Sub:
           - |
             {
@@ -23,25 +27,27 @@ Resources:
                 {
                   "Effect": "Allow",
                   "Principal": {
-                    "Federated": "arn:aws:iam::${AWS::AccountId}:oidc-provider/${URL}"
+                    "Federated": "arn:aws:iam::${AWS::AccountId}:oidc-provider/${OIDC}"
                   },
                   "Action": "sts:AssumeRoleWithWebIdentity",
                   "Condition": {
                     "StringEquals": {
-                      "${URL}:aud": "sts.amazonaws.com",
-                      "${URL}:sub": "system:serviceaccount:karpenter:karpenter"
+                      "${OIDC}:sub": "system:serviceaccount:karpenter:karpenter",
+                      "${OIDC}:aud": "sts.amazonaws.com"
                     }
                   }
                 }
               ]
             }
-          - URL: !Ref OIDCProviderURL
+          - OIDC: !Ref OIDCProviderURL
 
       Policies:
         - PolicyName: KarpenterControllerPolicy
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
+
+              # EC2 provisioning permissions
               - Sid: EC2Management
                 Effect: Allow
                 Action:
@@ -52,49 +58,80 @@ Resources:
                   - ec2:DeleteLaunchTemplate
                   - ec2:CreateTags
                   - ec2:DeleteTags
+                  - ec2:Describe*
                 Resource: "*"
+
+              # Pricing API
               - Sid: Pricing
                 Effect: Allow
                 Action:
                   - pricing:GetProducts
                 Resource: "*"
-              - Sid: PassNodeRole
+
+              # Required for node IAM role attachment
+              - Sid: IAMPassRole
                 Effect: Allow
                 Action:
                   - iam:PassRole
                 Resource: !GetAtt KarpenterNodeRole.Arn
 
+              # EKS read access
+              - Sid: EKSDescribe
+                Effect: Allow
+                Action:
+                  - eks:DescribeCluster
+                Resource: "*"
+
+  # ------------------------------------------------------------
+  # Node Role (for EC2 instances created by Karpenter)
+  # ------------------------------------------------------------
   KarpenterNodeRole:
     Type: AWS::IAM::Role
     Properties:
+      RoleName: !Sub "${ClusterName}-karpenter-node-role"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
               Service: ec2.amazonaws.com
-            Action: "sts:AssumeRole"
+            Action: sts:AssumeRole
+
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
         - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
         - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
         - arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
 
+  # ------------------------------------------------------------
+  # Instance Profile for Nodes
+  # ------------------------------------------------------------
   KarpenterNodeInstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
-      InstanceProfileName: KarpenterNodeInstanceProfile
+      InstanceProfileName: !Sub "${ClusterName}-karpenter-node-instance-profile"
       Roles:
         - !Ref KarpenterNodeRole
-  Outputs:
-    KarpenterControllerRole:
-      Description: Karpenter Controller IAM Role
-      Value: !Ref KarpenterControllerRole
-      Export:
-        Name: !Sub "${ClusterName}-KarpenterControllerRole"
 
-    KarpenterNodeRole:
-      Description: Karpenter Node IAM Role
-      Value: !Ref KarpenterNodeRole
-      Export:
-        Name: !Sub "${ClusterName}-KarpenterNodeRole"
+# ------------------------------------------------------------
+# OUTPUTS
+# ------------------------------------------------------------
+Outputs:
+
+  KarpenterControllerRole:
+    Description: "IAM Role used by Karpenter controller (IRSA)"
+    Value: !GetAtt KarpenterControllerRole.Arn
+    Export:
+      Name: !Sub "${ClusterName}-KarpenterControllerRole"
+
+  KarpenterNodeRole:
+    Description: "IAM Role used by EC2 nodes created by Karpenter"
+    Value: !GetAtt KarpenterNodeRole.Arn
+    Export:
+      Name: !Sub "${ClusterName}-KarpenterNodeRole"
+
+  KarpenterNodeInstanceProfile:
+    Description: "Instance Profile for Karpenter nodes"
+    Value: !Ref KarpenterNodeInstanceProfile
+    Export:
+      Name: !Sub "${ClusterName}-KarpenterNodeInstanceProfile"
