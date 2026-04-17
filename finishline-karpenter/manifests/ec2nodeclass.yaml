@@ -5,7 +5,7 @@ metadata:
 spec:
   amiFamily: Bottlerocket
 
-  instanceProfile: KarpenterNodeInstanceProfile-finishline-eks-cluster
+  instanceProfile: KarpenterNodeInstanceProfile
 
   subnetSelectorTerms:
     - tags:

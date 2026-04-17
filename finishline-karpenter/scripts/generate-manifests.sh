@@ -31,7 +31,7 @@ metadata:
 spec:
   amiFamily: ${AMI_FAMILY}
 
-  instanceProfile: ${CLUSTER_NAME}-karpenter-node-instance-profile
+  instanceProfile: KarpenterNodeInstanceProfile
 
   subnetSelectorTerms:
     - tags:
