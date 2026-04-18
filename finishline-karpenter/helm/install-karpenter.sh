@@ -101,17 +101,23 @@ helm upgrade --install karpenter-crd oci://public.ecr.aws/karpenter/karpenter-cr
 echo "Karpenter CRDs installed successfully"
 
 ########################################################
-# Apply IRSA ServiceAccount
+# Apply IRSA ServiceAccount (Corrected)
 ########################################################
 echo "=========================================="
 echo "Applying Karpenter ServiceAccount with IRSA..."
 echo "=========================================="
 
-# Create a temporary serviceaccount.yaml with correct values
 TEMP_SA=$(mktemp)
-sed -e "s|ACCOUNT_ID|${AWS_ACCOUNT_ID}|g" \
-    -e "s|CLUSTER_NAME|${CLUSTER_NAME}|g" \
-    serviceaccount.yaml > "${TEMP_SA}"
+
+cat <<EOF > "${TEMP_SA}"
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ${SERVICE_ACCOUNT_NAME}
+  namespace: ${KARPENTER_NAMESPACE}
+  annotations:
+    eks.amazonaws.com/role-arn: ${KARPENTER_CONTROLLER_ROLE}
+EOF
 
 kubectl apply -f "${TEMP_SA}" || {
   echo "ERROR: Failed to apply ServiceAccount"
