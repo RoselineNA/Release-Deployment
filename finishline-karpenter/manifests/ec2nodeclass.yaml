@@ -5,7 +5,10 @@ metadata:
 spec:
   amiFamily: Bottlerocket
 
-  # MUST match your CloudFormation Output exactly
+  # REQUIRED for Bottlerocket + K8s 1.33
+  amiSelectorSSM:
+    parameter: "/aws/service/bottlerocket/aws-k8s-1.33/x86_64/latest/image_id"
+
   instanceProfile: finishline-eks-cluster-karpenter-node-instance-profile
 
   subnetSelectorTerms:

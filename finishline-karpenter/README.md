@@ -598,3 +598,6 @@ This deployment template is provided as-is for use with AWS EKS clusters.
 **Karpenter Version:** 1.8.6+  
 **Status:** Production Ready ✅  
 **Key Feature:** IRSA + Role Alignment Validation
+![
+  
+](image-1.png)
